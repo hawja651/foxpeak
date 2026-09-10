@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fox Peak: Entry Trial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#0e1a26;
+    --night-2:#132638;
+    --frost:#eef2f4;
+    --frost-dim:#b9c6cd;
+    --ember:#c1571e;
+    --ember-soft:#e07a3f;
+    --glacier:#4c7085;
+    --pine:#3c7a56;
+    --error:#b0453a;
+    --line: rgba(238,242,244,0.14);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--night);
+    color:var(--frost);
+    font-family:'Work Sans', sans-serif;
+    overflow-x:hidden;
+  }
+
+  h1,h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    letter-spacing:-0.01em;
+    margin:0 0 0.4em 0;
+  }
+
+  .wordmark{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+  }
+
+  /* ---------- background ---------- */
+  .bg{
+    position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(76,112,133,0.35), transparent 55%),
+      linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+  }
+  .bg svg{ position:absolute; bottom:0; left:0; width:100%; height:42%; opacity:0.5; }
+
+  .snow{ position:fixed; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+  .flake{
+    position:absolute; top:-5%;
+    width:4px; height:4px; border-radius:50%;
+    background:var(--frost); opacity:0.5;
+    animation-name:fall; animation-timing-function:linear; animation-iteration-count:infinite;
+  }
+  @keyframes fall{
+    to{ transform:translateY(110vh); }
+  }
+
+  /* ---------- progress ---------- */
+  .top-bar{
+    position:fixed; top:0; left:0; right:0; z-index:5;
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+    padding:22px 30px; gap:16px;
+  }
+  .brand{ font-size:1.05rem; letter-spacing:0.02em; }
+  .timer{
+    justify-self:center;
+    font-size:0.85rem; color:var(--frost-dim);
+    display:flex; align-items:center; gap:6px;
+    white-space:nowrap;
+  }
+  .timer .digits{ color:var(--ember-soft); font-variant-numeric:tabular-nums; }
+  .progress{ display:flex; gap:8px; justify-self:end; }
+  .progress .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--line);
+    transition:background 0.4s ease, transform 0.4s ease;
+  }
+  .progress .dot.done{ background:var(--pine); }
+  .progress .dot.current{ background:var(--ember); transform:scale(1.3); }
+
+  /* ---------- stage layout ---------- */
+  .stage-wrap{
+    position:relative; z-index:2;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:120px 24px 80px;
+  }
+  .stage{
+    display:none;
+    max-width:640px; width:100%;
+    animation:rise 0.6s ease both;
+  }
+  .stage.active{ display:block; }
+  @keyframes rise{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .kicker{ color:var(--glacier); font-size:0.95rem; margin-bottom:10px; }
+  .lede{ font-size:1.5rem; line-height:1.35; }
+  .copy{ color:var(--frost-dim); font-size:1.02rem; line-height:1.6; margin:16px 0 28px; max-width:56ch; }
+
+  .btn{
+    appearance:none; border:1px solid var(--ember);
+    background:transparent; color:var(--frost);
+    font-family:'Work Sans', sans-serif; font-size:0.98rem; font-weight:500;
+    padding:12px 26px; border-radius:3px; cursor:pointer;
+    transition:background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+  .btn:hover{ background:var(--ember); }
+  .btn:disabled{ opacity:0.35; cursor:not-allowed; border-color:var(--line); }
+  .btn:disabled:hover{ background:transparent; }
+  .btn.ghost{ border-color:var(--line); color:var(--frost-dim); }
+  .btn.ghost:hover{ background:var(--night-2); color:var(--frost); }
+
+  .row-actions{ display:flex; align-items:center; gap:16px; margin-top:26px; }
+  .status{ font-size:0.92rem; min-height:1.4em; }
+  .status.error{ color:var(--error); }
+  .status.good{ color:var(--pine); }
+
+  /* ---------- crossword ---------- */
+  .xword-layout{ display:flex; gap:34px; flex-wrap:wrap; align-items:flex-start; }
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(5, 44px);
+    grid-template-rows: repeat(6, 44px);
+    gap:3px;
+    background:var(--line);
+    padding:3px;
+    border-radius:4px;
+  }
+  .cell{
+    position:relative;
+    background:var(--night-2);
+  }
+  .cell.blocked{ background:transparent; }
+  .cell input{
+    width:100%; height:100%;
+    background:transparent; border:none; outline:none;
+    color:var(--frost); text-align:center;
+    font-family:'Work Sans', sans-serif; font-size:1.15rem; font-weight:600;
+    text-transform:uppercase;
+    border-radius:3px;
+  }
+  .cell input:focus{ background:rgba(193,87,30,0.18); }
+  .cell.num::before{
+    content:attr(data-num);
+    position:absolute; top:2px; left:4px;
+    font-size:0.6rem; color:var(--glacier);
+  }
+  .cell.correct input{ color:var(--pine); }
+
+  .clues{ min-width:220px; font-size:0.92rem; color:var(--frost-dim); line-height:1.7; }
+  .clues h3{ font-family:'Work Sans'; font-size:0.85rem; color:var(--frost); margin:0 0 6px; font-weight:600; }
+  .clues .group{ margin-bottom:16px; }
+
+  /* ---------- captcha ---------- */
+  .critter-grid{
+    display:grid; grid-template-columns:repeat(4, 76px); gap:10px;
+    margin-bottom:8px;
+  }
+  .critter{
+    width:76px; height:76px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:2rem;
+    background:var(--night-2);
+    border:2px solid transparent;
+    cursor:pointer;
+    user-select:none;
+    transition:border-color 0.15s ease, transform 0.1s ease;
+  }
+  .critter:hover{ transform:translateY(-2px); }
+  .critter.selected{ border-color:var(--ember); background:rgba(193,87,30,0.15); }
+
+  /* ---------- riddle / quiz inputs ---------- */
+  .text-input{
+    width:100%; max-width:360px;
+    background:var(--night-2); border:1px solid var(--line);
+    color:var(--frost); font-family:'Work Sans', sans-serif; font-size:1rem;
+    padding:12px 14px; border-radius:4px; outline:none;
+  }
+  .text-input:focus{ border-color:var(--ember); }
+
+  .quiz{ display:flex; flex-direction:column; gap:22px; }
+  .quiz-item .q{ font-size:0.98rem; color:var(--frost); margin-bottom:8px; line-height:1.5; }
+  .quiz-item input.text-input{ max-width:280px; border-color:var(--line); }
+  .quiz-item input.text-input.correct{ border-color:var(--pine); color:var(--pine); }
+  .quiz-item input.text-input.wrong{ border-color:var(--error); }
+
+  /* ---------- final ---------- */
+  .code-box{
+    display:inline-flex; align-items:center; gap:18px;
+    background:var(--night-2); border:1px solid var(--line);
+    padding:18px 26px; border-radius:6px; margin-top:6px;
+  }
+  .code-box .code{
+    font-family:'Fraunces', serif; font-size:1.6rem; letter-spacing:0.04em;
+    color:var(--ember-soft);
+  }
+  .code-box .success-tag{
+    font-family:'Work Sans', sans-serif; font-size:0.9rem; font-weight:600;
+    color:var(--pine);
+  }
+  .signoff{ margin-top:30px; color:var(--frost-dim); font-style:italic; font-family:'Fraunces', serif; }
+
+  @media (max-width:520px){
+    .top-bar{ padding:16px 16px; grid-template-columns:auto auto; }
+    .top-bar .progress{ display:none; }
+    .timer{ font-size:0.72rem; justify-self:end; }
+    .xword-layout{ flex-direction:column; }
+    .grid{ grid-template-columns:repeat(5, 56px); grid-template-rows:repeat(6, 56px); }
+    .critter-grid{ grid-template-columns:repeat(4, 20vw); }
+    .critter{ width:20vw; height:20vw; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <svg viewBox="0 0 1000 300" preserveAspectRatio="none">
+    <polygon points="0,300 0,180 160,40 300,180 420,90 560,180 720,60 880,190 1000,140 1000,300" fill="#0a1622"/>
+    <polygon points="0,300 0,220 220,120 400,220 600,130 800,210 1000,180 1000,300" fill="#0d1f2e"/>
+  </svg>
+</div>
+<div class="snow" id="snow"></div>
+
+<div class="top-bar">
+  <div class="brand wordmark">Fox Peak 2026</div>
+  <div class="timer" id="timer"></div>
+  <div class="progress" id="progress"></div>
+</div>
+
+<div class="stage-wrap">
+
+  <!-- Stage 0: Intro -->
+  <section class="stage active" data-stage="0">
+    <div class="lede">Every season, a short list is drawn.</div>
+    <p class="copy">
+      Are thou even worthy of Jasper Hawkes? Mere mortal, finish these tasks to locate the hidden code.
+    </p>
+    <div class="row-actions">
+      <button class="btn" onclick="goTo(1)">Begin the trial</button>
+    </div>
+  </section>
+
+  <!-- Stage 1: Crossword -->
+  <section class="stage" data-stage="1">
+    <div class="kicker">I.</div>
+    <div class="lede">The mountain's vocabulary</div>
+    <p class="copy">Anyone can buy a lift ticket. Fewer can read the mountain itself. Fill in what you know.</p>
+
+    <div class="xword-layout">
+      <div class="grid" id="xword-grid"></div>
+      <div class="clues" id="xword-clues"></div>
+    </div>
+
+    <div class="row-actions">
+      <button class="btn" id="xword-check" onclick="checkCrossword()">Check the grid</button>
+      <span class="status" id="xword-status"></span>
+    </div>
+  </section>
+
+  <!-- Stage 2: Spot the fox -->
+  <section class="stage" data-stage="2">
+    <div class="kicker">II.</div>
+    <div class="lede">Eyes on the ridge</div>
+    <p class="copy">The trail cameras caught movement again last night. Pick out every fox before the batteries die.</p>
+
+    <div class="critter-grid" id="critter-grid"></div>
+
+    <div class="row-actions">
+      <button class="btn" onclick="checkCritters()">Verify</button>
+      <span class="status" id="critter-status"></span>
+    </div>
+  </section>
+
+  <!-- Stage 3: Field intelligence -->
+  <section class="stage" data-stage="3">
+    <div class="kicker">III.</div>
+    <div class="lede">Field intelligence</div>
+    <p class="copy">These aren't riddles. They're proof you've actually been paying attention.</p>
+
+    <div class="quiz" id="quiz-list"></div>
+
+    <div class="row-actions">
+      <button class="btn" onclick="checkQuiz()">Check answers</button>
+      <span class="status" id="quiz-status"></span>
+    </div>
+  </section>
+
+  <!-- Stage 4: Final reveal -->
+  <section class="stage" data-stage="4">
+    <div class="kicker">The list</div>
+    <div class="lede">Three trials. One code to find.</div>
+    <p class="copy">The code is made up of six digits.</p>
+    <p class="copy">
+      The first two digits: the day of the month that Mystery Trip was supposed to begin.<br>
+      The second two digits: the number of days a OUSSC weekend trip typically lasts.<br>
+      The last two digits: the number that is the same amount of letters as its value.
+    </p>
+
+    <div id="code-entry">
+      <input class="text-input" id="code-input" type="text" inputmode="numeric" placeholder="Enter the code" autocomplete="off">
+      <div class="row-actions">
+        <button class="btn" onclick="checkFinalCode()">Submit</button>
+        <span class="status" id="code-status"></span>
+      </div>
+    </div>
+
+    <div id="code-reveal" style="display:none;">
+      <div class="code-box">
+        <span class="code" id="final-code">140304</span>
+        <span class="success-tag">Success!</span>
+      </div>
+      <p class="copy" style="margin-top:26px;">
+        Once the password has been received, the Keeper of Threads, Minister of Propaganda and owner of archives
+        must send me the code.
+      </p>
+      <div class="signoff">See you at the lodge. [Redacted] required and encouraged.</div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ---------------- progress dots ---------------- */
+const TOTAL_STAGES = 5;
+let currentStage = 0;
+const progressEl = document.getElementById('progress');
+for (let i=0;i<TOTAL_STAGES;i++){
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.id = 'dot-'+i;
+  progressEl.appendChild(d);
+}
+function renderProgress(){
+  for (let i=0;i<TOTAL_STAGES;i++){
+    const d = document.getElementById('dot-'+i);
+    d.classList.toggle('current', i===currentStage);
+    d.classList.toggle('done', i<currentStage);
+  }
+}
+function goTo(stage){
+  document.querySelectorAll('.stage').forEach(s=>{
+    s.classList.toggle('active', Number(s.dataset.stage)===stage);
+  });
+  currentStage = stage;
+  renderProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+renderProgress();
+
+/* ---------------- ambient snow ---------------- */
+const snowEl = document.getElementById('snow');
+for (let i=0;i<40;i++){
+  const f = document.createElement('div');
+  f.className = 'flake';
+  f.style.left = Math.random()*100+'vw';
+  f.style.animationDuration = (8+Math.random()*10)+'s';
+  f.style.animationDelay = (Math.random()*10)+'s';
+  f.style.opacity = 0.2+Math.random()*0.4;
+  f.style.width = f.style.height = (2+Math.random()*3)+'px';
+  snowEl.appendChild(f);
+}
+
+/* ---------------- crossword ---------------- */
+// grid: 6 rows x 5 cols. '#' = blocked, letter = solution
+const XWORD_ROWS = [
+  "###P#",
+  "##FOX",
+  "#R#L#",
+  "DAVE#",
+  "#C###",
+  "SKI##"
+];
+// which cells start a numbered entry
+const XWORD_NUMBERS = { "0,3":1, "1,2":2, "2,1":3, "3,0":4, "5,0":5 };
+const XWORD_CLUES = [
+  { group:"Across", items:[
+    { num:2, text:"The animal this whole place takes its name from (3)" },
+    { num:4, text:"Mr Bothy's first name (4)" },
+    { num:5, text:"What you strap on before dropping in (3)" },
+  ]},
+  { group:"Down", items:[
+    { num:1, text:"What you plant beside you with every turn (4)" },
+    { num:3, text:"Holds your skis on the roof; holds attention at the bar (4)" },
+  ]}
+];
+
+const gridEl = document.getElementById('xword-grid');
+XWORD_ROWS.forEach((row, r)=>{
+  [...row].forEach((ch, c)=>{
+    const cell = document.createElement('div');
+    const key = r+','+c;
+    if (ch === '#'){
+      cell.className = 'cell blocked';
+    } else {
+      cell.className = 'cell';
+      if (XWORD_NUMBERS[key]){
+        cell.classList.add('num');
+        cell.dataset.num = XWORD_NUMBERS[key];
+      }
+      const input = document.createElement('input');
+      input.maxLength = 1;
+      input.dataset.r = r;
+      input.dataset.c = c;
+      input.addEventListener('input', (e)=>{
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g,'');
+        if (e.target.value) focusNext(r,c);
+      });
+      cell.appendChild(input);
+    }
+    gridEl.appendChild(cell);
+  });
+});
+
+function focusNext(r,c){
+  // move to next non-blocked cell reading left-to-right, top-to-bottom
+  const inputs = [...gridEl.querySelectorAll('input')];
+  const idx = inputs.findIndex(i=>Number(i.dataset.r)===r && Number(i.dataset.c)===c);
+  if (idx>-1 && idx < inputs.length-1) inputs[idx+1].focus();
+}
+
+const cluesEl = document.getElementById('xword-clues');
+XWORD_CLUES.forEach(group=>{
+  const g = document.createElement('div');
+  g.className = 'group';
+  g.innerHTML = '<h3>'+group.group+'</h3>' + group.items.map(it=>`<div>${it.num}. ${it.text}</div>`).join('');
+  cluesEl.appendChild(g);
+});
+
+function checkCrossword(){
+  const inputs = [...gridEl.querySelectorAll('input')];
+  let allCorrect = true;
+  inputs.forEach(inp=>{
+    const r = Number(inp.dataset.r), c = Number(inp.dataset.c);
+    const solution = XWORD_ROWS[r][c];
+    const cellDiv = inp.parentElement;
+    if (inp.value === solution){
+      cellDiv.classList.add('correct');
+    } else {
+      cellDiv.classList.remove('correct');
+      allCorrect = false;
+    }
+  });
+  const status = document.getElementById('xword-status');
+  if (allCorrect){
+    status.textContent = 'The mountain recognizes you.';
+    status.className = 'status good';
+    setTimeout(()=>goTo(2), 900);
+  } else {
+    status.textContent = "Not quite. Some of these don't match yet.";
+    status.className = 'status error';
+  }
+}
+
+/* ---------------- spot the fox ---------------- */
+const CRITTERS = ['🦊','🦊','🦊','🦊','🐺','🐇','🦉','🐻','🦌','🐿️','🦔','🐗'];
+const critterGrid = document.getElementById('critter-grid');
+let critterState = [];
+
+function buildCritters(){
+  critterGrid.innerHTML = '';
+  critterState = [...CRITTERS];
+  // shuffle
+  for (let i=critterState.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [critterState[i], critterState[j]] = [critterState[j], critterState[i]];
+  }
+  critterState.forEach((emoji, idx)=>{
+    const div = document.createElement('div');
+    div.className = 'critter';
+    div.textContent = emoji;
+    div.dataset.idx = idx;
+    div.addEventListener('click', ()=> div.classList.toggle('selected'));
+    critterGrid.appendChild(div);
+  });
+}
+buildCritters();
+
+function checkCritters(){
+  const tiles = [...critterGrid.querySelectorAll('.critter')];
+  const selected = tiles.filter(t=>t.classList.contains('selected')).map(t=>Number(t.dataset.idx));
+  const correct = critterState.map((e,i)=>e==='🦊'?i:null).filter(i=>i!==null);
+  const isMatch = selected.length===correct.length && selected.every(i=>correct.includes(i));
+  const status = document.getElementById('critter-status');
+  if (isMatch){
+    status.textContent = 'Confirmed. All present and accounted for.';
+    status.className = 'status good';
+    setTimeout(()=>goTo(3), 900);
+  } else {
+    status.textContent = 'Camera glitched, the ridge resets. Try again.';
+    status.className = 'status error';
+    tiles.forEach(t=>t.classList.remove('selected'));
+    buildCritters();
+  }
+}
+
+/* ---------------- field intelligence quiz ---------------- */
+const QUIZ = [
+  {
+    id:'q1',
+    text:"What is the phonetic alphabet representation of the letter of the fourth word, fourth letter of the fourth most recent post from Bothy Instagram?",
+    accept:['uniform']
+  },
+  {
+    id:'q2',
+    text:"How many OUSSC trips are planned for this year?",
+    accept:['7','seven']
+  },
+  {
+    id:'q3',
+    text:"What mountain did OUSSC once own a lodge on?",
+    accept:['coronet peak']
+  },
+  {
+    id:'q4',
+    text:'In the 2013 hit "What Does the Fox Say", what is three letters after alphabetically of the 3rd letter of the 50th word?',
+    accept:['a']
+  },
+  {
+    id:'q5',
+    text:"What is the home town of Rachel Vass's Facebook page earliest comment?",
+    accept:['westport']
+  },
+  {
+    id:'q6',
+    text:"What are the first four digits of the latitude of the Fox Peak lodge?",
+    accept:['4386']
+  },
+];
+
+const quizListEl = document.getElementById('quiz-list');
+QUIZ.forEach(item=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'quiz-item';
+  wrap.innerHTML =
+    '<div class="q">' + item.text + '</div>' +
+    '<input class="text-input" type="text" id="' + item.id + '" autocomplete="off" placeholder="Your answer">';
+  quizListEl.appendChild(wrap);
+});
+
+function normalizeAnswer(v){
+  return v.trim().toLowerCase().replace(/\s+/g,' ');
+}
+
+function checkQuiz(){
+  let allCorrect = true;
+  QUIZ.forEach(item=>{
+    const input = document.getElementById(item.id);
+    const val = normalizeAnswer(input.value);
+    const ok = item.accept.includes(val);
+    input.classList.toggle('correct', ok);
+    input.classList.toggle('wrong', !ok);
+    if (!ok) allCorrect = false;
+  });
+  const status = document.getElementById('quiz-status');
+  if (allCorrect){
+    status.textContent = 'All confirmed.';
+    status.className = 'status good';
+    setTimeout(()=>goTo(4), 900);
+  } else {
+    status.textContent = 'A few of these are off. Look again.';
+    status.className = 'status error';
+  }
+}
+
+/* ---------------- final ---------------- */
+const FINAL_CODE = '140304';
+function checkFinalCode(){
+  const val = document.getElementById('code-input').value.trim();
+  const status = document.getElementById('code-status');
+  if (val === FINAL_CODE){
+    status.textContent = '';
+    document.getElementById('code-entry').style.display = 'none';
+    document.getElementById('code-reveal').style.display = 'block';
+  } else {
+    status.textContent = "That's not it.";
+    status.className = 'status error';
+  }
+}
+
+
+
+/* ---------------- countdown timer ---------------- */
+// Deadline: midnight, Sunday 13 September 2026 (local time)
+const DEADLINE = new Date(2026, 8, 13, 0, 0, 0);
+const timerEl = document.getElementById('timer');
+
+function updateTimer(){
+  const now = new Date();
+  let diff = DEADLINE - now;
+  if (diff <= 0){
+    timerEl.innerHTML = 'The window has closed.';
+    return;
+  }
+  const day = 24*60*60*1000;
+  const hour = 60*60*1000;
+  const minute = 60*1000;
+  const days = Math.floor(diff / day); diff -= days*day;
+  const hours = Math.floor(diff / hour); diff -= hours*hour;
+  const minutes = Math.floor(diff / minute); diff -= minutes*minute;
+  const seconds = Math.floor(diff / 1000);
+  const pad = n => String(n).padStart(2,'0');
+  timerEl.innerHTML = 'Closes in <span class="digits">' + days + 'd ' + pad(hours) + ':' + pad(minutes) + ':' + pad(seconds) + '</span>';
+}
+updateTimer();
+setInterval(updateTimer, 1000);
+</script>
+
+</body>
+</html>
